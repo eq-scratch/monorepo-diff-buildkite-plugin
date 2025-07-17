@@ -1,5 +1,5 @@
 env:
-  BUILDKITE_PLUGIN_MONOREPO_DIFF_BUILDKITE_PLUGIN_TEST_MODE: true
+  BUILDKITE_PLUGIN_MONOREPO_DIFF_BUILDKITE_PLUGIN_LOCAL_MODE: true
 
 steps:
   - label: ":shell: Shellcheck"
@@ -67,7 +67,7 @@ steps:
             - path:
                 - "user-service/infrastructure/"
               config:
-                command: "echo i-am-running-in-a-group"
+                command: "echo i-am-running"
 
   - label: ":bomb: Testing groups"
     plugins:
@@ -85,6 +85,50 @@ steps:
                 steps:
                   - command: "echo i-am-running-in-a-group"
                   - command: "echo i-am-also-running-in-a-group"
+            - path:
+                - "user-service/serverless.yaml"
+              config:
+                group: "my group"
+                steps:
+                  - commands:
+                    - "echo i-am-running-in-a-duplicate-group"
+                    - "echo i-am-also-running-in-a-duplicate-group"
+            - path:
+                - "user-service/"
+              config:
+                group: "another group"
+                steps:
+                  - command: "echo i-am-running-in-a-group"
+                  - command: "echo i-am-also-running-in-a-group"
+
+  - label: ":bomb: Testing everything in a group"
+    plugins:
+      - artifacts#v1.9.4:
+          download:
+            - "monorepo-diff-buildkite-plugin"
+      - ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}#${BUILDKITE_COMMIT}:
+          diff: "cat ./e2e/multiple-paths"
+          group: "my group"
+          watch:
+            - path:
+                - "user-service/infrastructure/"
+                - "product-service/infrastructure/"
+              config:
+                steps:
+                  - command: "echo i-am-running-in-a-group"
+                  - command: "echo i-am-also-running-in-a-group"
+            - path:
+                - "user-service/serverless.yaml"
+              config:
+                steps:
+                  - command: "echo i-am-running-in-a-group-2"
+                  - command: "echo i-am-also-running-in-a-group-2"
+            - path:
+                - "user-service/"
+              config:
+                steps:
+                  - command: "echo i-am-running-in-a-group-3"
+                  - command: "echo i-am-also-running-in-a-group-3"
 
   - label: ":bomb: Testing hooks"
     plugins:

@@ -23,9 +23,10 @@ type Plugin struct {
 	Watch         []WatchConfig
 	RawEnv        interface{} `json:"env"`
 	Env           map[string]string
+	Group         string                   `                 yaml:"group,omitempty"`
 	Metadata      map[string]string        `json:"meta_data"`
-	RawNotify     []map[string]interface{} `json:"notify" yaml:",omitempty"`
-	Notify        []PluginNotify           `yaml:"notify,omitempty"`
+	RawNotify     []map[string]interface{} `json:"notify"    yaml:",omitempty"`
+	Notify        []PluginNotify           `                 yaml:"notify,omitempty"`
 }
 
 // HookConfig Plugin hook configuration

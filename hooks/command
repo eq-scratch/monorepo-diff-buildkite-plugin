@@ -76,7 +76,7 @@ get_version() {
   else
     _version=""
   fi
-    
+
   RETVAL="$_version"
 }
 
@@ -96,8 +96,9 @@ download_binary_and_run() {
   fi
 
   local test_mode="${BUILDKITE_PLUGIN_MONOREPO_DIFF_BUILDKITE_PLUGIN_TEST_MODE:-false}"
+  local local_mode="${BUILDKITE_PLUGIN_MONOREPO_DIFF_BUILDKITE_PLUGIN_LOCAL_MODE:-false}"
 
-  if [[ "$test_mode" == "false" ]]; then
+  if [[ "$test_mode" == "false" ]] && [[ "$local_mode" == "false" ]]; then
     if ! downloader "$_url" "$_executable"; then
       say "failed to download $_url"
       exit 1
@@ -106,7 +107,7 @@ download_binary_and_run() {
 
   # todo: move it to a more secure place
   chmod +x ${_executable}
-  
+
   ./${_executable}
 }
 

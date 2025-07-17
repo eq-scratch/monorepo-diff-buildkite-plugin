@@ -18,7 +18,8 @@ func TestMain(m *testing.M) {
 	_ = os.Setenv("BUILDKITE_BRANCH", "go-rewrite")
 	_ = os.Setenv("env3", "env-3")
 	_ = os.Setenv("env4", "env-4")
-	_ = os.Setenv("TEST_MODE", "true")
+	_ = os.Setenv("BUILDKITE_PLUGIN_MONOREPO_DIFF_BUILDKITE_PLUGIN_TEST_MODE", "true")
+	_ = os.Setenv("BUILDKITE_PLUGIN_MONOREPO_DIFF_BUILDKITE_PLUGIN_LOCAL_MODE", "true")
 
 	run := m.Run()
 

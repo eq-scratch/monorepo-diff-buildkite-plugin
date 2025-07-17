@@ -148,7 +148,7 @@ func TestPipelinesToTriggerGetsListOfPipelines(t *testing.T) {
 		"watch-path-4/test/index_test.go",
 	}
 
-	pipelines, err := stepsToTrigger(changedFiles, watch)
+	pipelines, err := stepsToTrigger(changedFiles, watch, "")
 	assert.NoError(t, err)
 	var got []string
 
@@ -404,12 +404,18 @@ func TestPipelinesStepsToTrigger(t *testing.T) {
 		},
 	}
 
-	for name, tc := range testCases {
-		t.Run(name, func(t *testing.T) {
-			steps, err := stepsToTrigger(tc.ChangedFiles, tc.WatchConfigs)
-			assert.NoError(t, err)
-			assert.Equal(t, tc.Expected, steps)
-		})
+	for _, group := range []string{"", "group label"} {
+		for name, tc := range testCases {
+			t.Run(name, func(t *testing.T) {
+				steps, err := stepsToTrigger(tc.ChangedFiles, tc.WatchConfigs, group)
+				assert.NoError(t, err)
+				expected := tc.Expected
+				if group != "" && len(tc.Expected) > 0 {
+					expected = []Step{Step{Steps: tc.Expected, Group: group}}
+				}
+				assert.Equal(t, expected, steps)
+			})
+		}
 	}
 }
 

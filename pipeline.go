@@ -60,7 +60,7 @@ func uploadPipeline(plugin Plugin, generatePipeline PipelineGenerator) (string, 
 
 	log.Debug("Output from diff: \n" + strings.Join(diffOutput, "\n"))
 
-	steps, err := stepsToTrigger(diffOutput, plugin.Watch)
+	steps, err := stepsToTrigger(diffOutput, plugin.Watch, plugin.Group)
 	if err != nil {
 		return "", []string{}, err
 	}
@@ -88,6 +88,13 @@ func uploadPipeline(plugin Plugin, generatePipeline PipelineGenerator) (string, 
 		args = append(args, "--no-interpolation")
 	}
 
+	if env(
+		"BUILDKITE_PLUGIN_MONOREPO_DIFF_BUILDKITE_PLUGIN_TEST_MODE_SKIP_UPLOAD",
+		"false",
+	) == "true" {
+		return cmd, args, nil
+	}
+
 	_, err = executeCommand("buildkite-agent", args)
 
 	return cmd, args, err
@@ -107,11 +114,25 @@ func diff(command string) ([]string, error) {
 	return strings.Fields(strings.TrimSpace(output)), nil
 }
 
-func stepsToTrigger(files []string, watch []WatchConfig) ([]Step, error) {
+func stepsToTrigger(files []string, watch []WatchConfig, group string) ([]Step, error) {
 	steps := []Step{}
 	var defaultStep *Step
 
 	for _, w := range watch {
+		if w.Step.Group != "" {
+			if w.Step.Group == group {
+				w.Step.Group = ""
+			} else if group != "" {
+				return nil, fmt.Errorf(
+					"group=%s and watch[*].config.group=%s cannot both be set",
+					group,
+					w.Step.Group,
+				)
+			} else if w.Step.Steps == nil || len(w.Step.Steps) == 0 {
+				w.Step = Step{Group: w.Step.Group, Steps: []Step{w.Step}}
+				w.Step.Steps[0].Group = ""
+			}
+		}
 		if w.Default != nil {
 			defaultStep = &w.Step
 			continue
@@ -173,7 +194,15 @@ func stepsToTrigger(files []string, watch []WatchConfig) ([]Step, error) {
 		steps = append(steps, *defaultStep)
 	}
 
-	return dedupSteps(steps), nil
+	steps = dedupSteps(steps)
+
+	if len(steps) > 0 {
+		if group != "" {
+			steps = []Step{Step{Group: group, Steps: steps}}
+		}
+	}
+
+	return steps, nil
 }
 
 // matchPath checks if the file f matches the path p.
@@ -254,7 +283,7 @@ func generatePipeline(steps []Step, plugin Plugin) (*os.File, bool, error) {
 	}
 
 	// Disable logging in context of go tests.
-	if env("TEST_MODE", "") != "true" {
+	if env("BUILDKITE_PLUGIN_MONOREPO_DIFF_BUILDKITE_PLUGIN_TEST_MODE", "") != "true" {
 		fmt.Printf("Generated Pipeline:\n%s\n", string(data))
 	}
 

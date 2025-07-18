@@ -1,36 +1,82 @@
 env:
   BUILDKITE_PLUGIN_MONOREPO_DIFF_BUILDKITE_PLUGIN_LOCAL_MODE: true
 
+agents:
+  - "queue=sandbox"
+
 steps:
   - label: ":shell: Shellcheck"
     plugins:
-      shellcheck#v1.4.0:
-        files:
-          - hooks/**
-          - lib/**
-          - commands/**
+      - shellcheck#v1.4.0:
+          files:
+            - hooks/**
+            - lib/**
+            - commands/**
+      - ".buildkite/plugins/wait-for-docker"
+      - kubernetes:
+          mirrorVolumeMounts: true
+          podSpecPatch:
+            containers:
+              - name: container-0
+                volumeMounts:
+                  - mountPath: /var/run/
+                    name: docker-sock
+            volumes: &volumes
+              - name: docker-sock
+                emptyDir: {}
+          sidecars: &sidecars
+            - image: public.ecr.aws/docker/library/docker:28.1.1-dind
+              command: [dockerd-entrypoint.sh, "--data-root=/workspace/docker-data-root"]
+              env:
+                - name: DOCKER_TLS_CERTDIR
+                  value: ""
+                - name: TEST_INTEGRATION_USE_SNAPSHOTTER
+                  value: "true"
+              volumeMounts:
+                - mountPath: /var/run/
+                  name: docker-sock
+              securityContext:
+                privileged: true
+                allowPrivilegeEscalation: true
 
   - label: ":sparkles: Lint"
     plugins:
-      plugin-linter#v3.3.0:
-        id: monorepo-diff
+      - plugin-linter#v3.3.0:
+          id: monorepo-diff
+      - ".buildkite/plugins/wait-for-docker"
+      - kubernetes:
+          mirrorVolumeMounts: true
+          podSpecPatch:
+            containers:
+              - name: container-0
+                volumeMounts:
+                  - mountPath: /var/run/
+                    name: docker-sock
+            volumes: *volumes
+          sidecars: *sidecars
 
   - label: ":golang: Test"
     command: go test ./...
     plugins:
-      - docker#v5.13.0:
-          image: "golang"
-          always-pull: true
-          workdir: /plugin
+      #- docker#v5.13.0:
+      #    workdir: /plugin
+      - kubernetes:
+          podSpecPatch:
+            containers:
+              - name: container-0
+                image: golang
 
   - label: ":linux: Build"
     command: make local
     artifact_paths: monorepo-diff-buildkite-plugin
     plugins:
-      - docker#v5.13.0:
-          image: "golang"
-          always-pull: true
-          workdir: /plugin
+      #- docker#v5.13.0:
+      #    workdir: /plugin
+      - kubernetes:
+          podSpecPatch:
+            containers:
+              - name: container-0
+                image: golang
 
   - wait: ~
 

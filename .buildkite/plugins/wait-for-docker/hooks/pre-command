@@ -1,0 +1,12 @@
+#!/bin/bash
+
+echo "~~~ Waiting for :docker: socket"
+echo "Initial contents of /var/run/"
+ls -l /var/run/
+while [ ! -S /var/run/docker.sock ]
+do
+    sleep 1
+done
+echo "Post wait contents of /var/run/"
+ls -l /var/run/
+docker info
